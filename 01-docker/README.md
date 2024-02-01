@@ -90,7 +90,7 @@ $ python
 
 ### Copying files
 
-Let’s create a local file `[pipeline.py](http://pipeline.py)` with some code and run it on the docker image
+Let’s create a local file `pipeline.py` with some code and run it on the docker image
 
 For that we need to copy it so we add the following commands to our docker file (after `RUN`)
 
@@ -137,7 +137,7 @@ We don’t actually want to go into the container and run it manually, we want t
 ENTRYPOINT [ "python", "pipeline.py" ]
 ```
 
-We could just run it as a command like `RUN python [pipeline.py](http://pipeline.py)` and then we could keep bash as our entrypoint for the interactive mode, but then we wouldn’t see the output and we couldn’t parameterize it and pass args from the CLI (see below)
+We could just run it as a command like `RUN python pipeline.py` and then we could keep bash as our entrypoint for the interactive mode, but then we wouldn’t see the output and we couldn’t parameterize it and pass args from the CLI (see below)
 
 ### Arguments
 
@@ -176,18 +176,18 @@ docker run -it \
     -e POSTGRES_USER="root" \
     -e POSTGRES_PASSWORD="root" \
     -e POSTGRES_DB="ny_taxi" \
-    -v $(pwd)/ny_taxi_postgres_db:/var/lib/postgresql/data \
+    -v $(pwd)/data/ny_taxi_postgres_db:/var/lib/postgresql/data \
     -p 5432:5432 \
     postgres:13
 ```
 
 - Environment variables are set using the `-e` option, one for each variable
 - Volumes are used to map a local folder on the host machine to a folder on the container. We need to store files for the postgres DB and we also want to persist the data we create
-    - Create the local folder `ny_taxi_postgres_db`
+    - Create the local folder `data/ny_taxi_postgres_db`
     - Map it to a path on the container using the `-v` option (we need the full path or use `$(pwd)` to add the current directory)
 - The port is needed to send requests to our DB on the container. We map a port locally to a port on the container (local_port:container_port)
 
-Now if we run this command in the terminal (we have to be in the `01-docker` directory) we see a lot of new folders and files in the `ny_taxi_postgres_db` folder
+Now if we run this command in the terminal (we have to be in the `01-docker` directory) we see a lot of new folders and files in the `data/ny_taxi_postgres_db` folder
 
 ## Accesing the postgres DB
 
@@ -295,7 +295,7 @@ docker run -it \
     -e POSTGRES_USER="root" \
     -e POSTGRES_PASSWORD="root" \
     -e POSTGRES_DB="ny_taxi" \
-    -v $(pwd)/ny_taxi_postgres_db:/var/lib/postgresql/data \
+    -v $(pwd)/data/ny_taxi_postgres_db:/var/lib/postgresql/data \
     -p 5432:5432 \
     --network pg-network \
     --name pg-database \
@@ -325,3 +325,157 @@ If we right click, we can view the first 100 rows (this will open a sql tab with
 ![pgAdmin first 100 rows](screenshots/pgadmin_first_100_rows.png)
 
 We can also write our own queries by opening Tools > Query Tool
+
+# Dockerising the pipeline script
+
+We previously did some data ingestion in the `upload_taxi_data_to_postgres.ipynb` notebook. 
+
+## Create the data ingestion script
+
+Let's move this to an `ingest_data.py` script. We can drop the table with `DROP TABLE public.yellow_taxi_data;` in pgAdmin.
+
+Now to run it
+
+```bash
+python ingest_data.py \
+    --user=root \
+    --password=root \
+    --host=localhost \
+    --port=5432 \
+    --db=ny_taxi \
+    --table_name=yellow_taxi_data \
+    --csv_url=https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz \
+    --csv_name=yellow_tripdata_2021-01.csv
+```
+
+## Update the docker file for data ingestion
+
+That works, so let's update the Dockerfile to run the code. We need to add the extra packages we used like wget, sqlalchemy, psycopg2, and change the name of the script
+
+```docker
+FROM python:3.9
+
+RUN apt-get install wget
+
+RUN pip install pandas sqlalchemy psycopg2
+
+WORKDIR /app
+COPY ingest_data.py ingest_data.py
+
+ENTRYPOINT [ "python", "ingest_data.py" ]
+```
+
+## Build and run the ingestion container
+
+We can build the image
+
+```bash
+docker build -t ingest_data:v0.0.1 .
+```
+
+And run it with our args. We have to make sure we're running it on the network, and that we pass the name `pg-database` as the host name to the script, otherwise it cannot access our postgres instance if we just say `localhost`
+
+NOTE: The args like --network and --name have to come before the image name as these are options for the docker run, whereas the CLI args for the python script have to go after the name of the image
+
+
+```bash
+docker run -it \
+    --network pg-network \
+    --name ingest-data \
+    ingest_data:v0.0.1 \
+        --user=root \
+        --password=root \
+        --host=pg-database \
+        --port=5432 \
+        --db=ny_taxi \
+        --table_name=yellow_taxi_data \
+        --csv_url=https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz \
+        --csv_name=yellow_tripdata_2021-01.csv
+```
+
+NOTE: If we need to see the containers and stop them 
+
+```bash
+docker ps
+docker kill some-id-of-the-container
+```
+
+#### Sidenote from the instructor
+
+If it's slow to download the csv, we can also pass our local files to the container in case we already downloaded the csv before. For that, we need to spin up a http server and use our IP address (because localhost for the docker container is its own localhost, not our host machine).
+
+We can spin up a http server in our current directory and access it at http://localhost:8000/ to see the files
+
+```bash
+python -m http.server
+```
+
+We need our ip address (`en0` for wifi, `en1` for wired)
+
+```bash
+ipconfig getifaddr en0
+```
+ 
+We can check it by going to `http://<our-ip-address>:8000/` and checking that we see the same files
+
+Then we would pass `--csv_url=http://<our-ip-address>:8000/yellow_tripdata_2021-01.csv` to our docker run command instead
+
+# Docker compose
+
+Docker compose should already come pre-installed with docker desktop. We can check it with
+
+```bash
+docker-compose
+```
+
+We create our containers in a `docker-compose.yaml` file
+
+```yaml
+services:
+  pgdatabase:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=ny_taxi
+    volumes:
+      - ./data/ny_taxi_postgres_db:/var/lib/postgresql/data:rw
+    ports:
+      - 5432:5432
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    ports:
+      - 8080:80
+```
+
+Some things to note:
+- We don't need the full path to the local data/ny_taxi_postgres_db
+- Since we define these two services together, they are automatically part of the same network so we don't need to define a network
+
+We can run it with `docker-compose up`
+
+NOTE: If you get an error with "The CSRF session token is missing", make sure you close the pgAdmin tab before running the docker-compose up command [source](https://stackoverflow.com/a/65099126) or just refresh that tab
+
+NOTE: I added the volume `./data/pgadmin:/var/lib/pgadmin` for the pgadmin container to persist the server creation (the first time you login you have to create it, but then it will be persisted)
+
+To clean up the containers
+
+```bash
+docker-compose down
+```
+
+To run in detached mode (so we can still use that terminal)
+
+```bash
+docker-compose up -d
+```
+
+To stop and start the containers (without removing them, as we do with `down`)
+
+```bash
+docker compose start
+docker compose stop
+```
