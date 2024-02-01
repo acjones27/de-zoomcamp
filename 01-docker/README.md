@@ -479,3 +479,58 @@ To stop and start the containers (without removing them, as we do with `down`)
 docker compose start
 docker compose stop
 ```
+
+# SQL
+
+First let's add the information about the taxi zones from the [data page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) -> Taxi Zone Maps and Lookup Tables -> Taxi Zone Lookup Table (CSV)
+
+I did this in the `get_zones_data.ipynb` (I ran `docker-compose up` first)
+
+This `zones` data contains the LocationIDs that map to the PU (pick-up) and DO (drop-off) LocationIDs in the `yellow_taxi_data` table
+
+NOTE: I messed up the ingestion conversion of the datetime columns. I didn't convert them on the header so the table schema had them as text which meant I couldn't do things like DATE_TRUNC. In order to speed up the recreation of these tables, I added an extra step to the docker compose file and fixed the ingestion script, including the zones data. It can be commented out of the docker compose if need be.
+
+Some examples
+
+- Information about the zones and drop-offs/pick-ups
+```sql
+SELECT TPEP_PICKUP_DATETIME,
+	TPEP_DROPOFF_DATETIME,
+    DATE_TRUNC('DAY', TPEP_PICKUP_DATETIME) as pu_day,
+	DATE_TRUNC('DAY', TPEP_DROPOFF_DATETIME) as doff_day,
+	TOTAL_AMOUNT,
+	PUP."Borough" || ' / ' || PUP."Zone" AS PUP_LOC,
+	DOFF."Borough" || ' / ' || DOFF."Zone" AS DOFF_LOC
+FROM YELLOW_TAXI_DATA Y
+INNER JOIN ZONES PUP ON Y."PULocationID" = PUP."LocationID"
+INNER JOIN ZONES DOFF ON Y."DOLocationID" = DOFF."LocationID"
+```
+
+- Number of drop_offs per day
+```sql
+SELECT 
+	CAST(TPEP_DROPOFF_DATETIME AS DATE) as doff_day,
+	COUNT(*) as n_trips,
+    MAX(total_amount) as max_amount,
+    MAX(passenger_count) as max_passengers
+FROM YELLOW_TAXI_DATA Y
+INNER JOIN ZONES PUP ON Y."PULocationID" = PUP."LocationID"
+INNER JOIN ZONES DOFF ON Y."DOLocationID" = DOFF."LocationID"
+GROUP BY 1
+ORDER BY "doff_day" ASC
+```
+
+- Number of drop_offs per day and location
+```sql
+SELECT 
+	CAST(TPEP_DROPOFF_DATETIME AS DATE) as doff_day,
+    DOFF."Borough" || ' / ' || DOFF."Zone" AS DOFF_LOC,
+	COUNT(*) as n_trips,
+    MAX(total_amount) as max_amount,
+    MAX(passenger_count) as max_passengers
+FROM YELLOW_TAXI_DATA Y
+INNER JOIN ZONES PUP ON Y."PULocationID" = PUP."LocationID"
+INNER JOIN ZONES DOFF ON Y."DOLocationID" = DOFF."LocationID"
+GROUP BY 1, 2
+ORDER BY doff_day ASC, DOFF_LOC ASC
+```

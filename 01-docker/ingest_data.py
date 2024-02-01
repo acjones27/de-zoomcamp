@@ -18,10 +18,13 @@ def main(params):
 
     os.system(f"wget {csv_url} -O {csv_name}.gz")
     os.system(f"gunzip {csv_name}.gz")
+    os.system("wget https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv")
 
     engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{db}")
 
     df = pd.read_csv(csv_name, nrows=100)
+    df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
+    df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
     df.head(n=0).to_sql(name=table_name, con=engine, if_exists="replace")
 
     df_iter = pd.read_csv(csv_name, iterator=True, chunksize=100_000)
@@ -30,6 +33,9 @@ def main(params):
         chunk.tpep_pickup_datetime = pd.to_datetime(chunk.tpep_pickup_datetime)
         chunk.tpep_dropoff_datetime = pd.to_datetime(chunk.tpep_dropoff_datetime)
         chunk.to_sql(name=table_name, con=engine, if_exists="append")
+
+    df_zones = pd.read_csv("taxi+_zone_lookup.csv")
+    df_zones.to_sql(name="zones", con=engine, if_exists="replace")
 
 
 if __name__ == "__main__":
