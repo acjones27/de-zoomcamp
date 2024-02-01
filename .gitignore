@@ -163,6 +163,7 @@ cython_debug/
 .DS_Store
 
 # postgres db files
-01-docker/ny_taxi_postgres_db/*
-!01-docker/ny_taxi_postgres_db/.gitkeep
-**.csv
+01-docker/data/*
+!01-docker/data/.gitkeep
+!01-docker/data/ny_taxi_postgres_db/.gitkeep
+**.csv*
