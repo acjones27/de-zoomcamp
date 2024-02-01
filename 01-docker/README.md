@@ -2,6 +2,8 @@
 
 # Intro to docker
 
+[Youtube video](https://youtu.be/EYNwNlOrpr0?feature=shared)
+
 Main benefits:
 
 - Isolation. We can install things on containers running on our local computer that don’t conflict with our actual local installations
@@ -165,8 +167,9 @@ Job finished successfully for day = 2021-01-15!
 
 Note: We don’t need the -it here since it will run the script and then exit the image anyway
 
-## Setting up postgres image
+# Setting up postgres image
 
+[Youtube video](https://youtu.be/2JM-ziJt0WI?feature=shared)
 
 ```bash
 docker run -it \
@@ -186,7 +189,7 @@ docker run -it \
 
 Now if we run this command in the terminal (we have to be in the `01-docker` directory) we see a lot of new folders and files in the `ny_taxi_postgres_db` folder
 
-### Accesing the postgres DB
+## Accesing the postgres DB
 
 Install the pgcli package on your host machine
 
@@ -240,3 +243,85 @@ See the notebook `upload_taxi_data_to_postgres.ipynb`
 
 You might need to `pip install pandas` (I created a `requirements.txt` with the packages I had to install)
 
+# pgAdmin
+
+[Youtube video](https://youtu.be/hCAIVe9N0ow?feature=shared)
+
+Since interacting with the DB via the pgcli is a bit inconvenient, we can also use a GUI. One example is pgAdmin, and we will set it up using a docker container. 
+
+## Set up pgAdmin container
+Google "pgAdmin docker" and you'll reach the [downloads page](https://www.pgadmin.org/download/) from which you can select "Container" and then go to the [image on dockerhub](https://hub.docker.com/r/dpage/pgadmin4/) and see the variables [here](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html)
+
+
+```bash
+docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+  -e PGADMIN_DEFAULT_PASSWORD="root" \
+  -p 8080:80 \
+  dpage/pgadmin4
+```
+
+The options are similar for the cli above. The email and password are needed to log into the interface, then we do port mapping, and finally the image name that we took from docker hub
+
+## Connect pgAdmin to postgres DB
+
+Once we run that, we can see the UI at `localhost:8080` and we just login with the username and password above and set up the server
+
+1. Register the server
+![Create server](screenshots/pgadmin_create_server.png)
+
+2. Give it a name
+![General tab](screenshots/pgadmin_server_name.png)
+
+3. Set up the connection to match our postgres image
+![Connection failed](screenshots/pgadmin_failed_conn.png)
+
+Uh-oh. So the connection didn't work because it is looking in the "localhost" of the machine with pgadmin for the postgres db, but they are actually on two separate containers. So we need "networks" to fix that. I think that basically means, connecting the two machines so that they can communicate with each other.
+
+First, stop the pgadmin and postgres containers via the terminal and look up "docker network create" for info on how to do it
+
+## Create a docker network
+
+```bash
+docker network create pg-network
+```
+
+The last option is just the name we want to give it.
+
+Then we just pass the option `--network pg-network` and give a name to each container with `--name something` to the other docker commands, i.e.
+
+```bash
+docker run -it \
+    -e POSTGRES_USER="root" \
+    -e POSTGRES_PASSWORD="root" \
+    -e POSTGRES_DB="ny_taxi" \
+    -v $(pwd)/ny_taxi_postgres_db:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    --network pg-network \
+    --name pg-database \
+    postgres:13
+```
+
+```bash
+docker run -it \
+  -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+  -e PGADMIN_DEFAULT_PASSWORD="root" \
+  -p 8080:80 \
+  --network pg-network \
+  --name pg-admin \
+  dpage/pgadmin4
+```
+
+Now we just reconnect to pgAdmin and, in the connection, instead of localhost, we give it the name of the container with the DB i.e. `pg-database`
+
+![Updated connection host](screenshots/pgadmin_connection_host.png)
+
+Now we can explore more easily e.g. we can see the tables in the schema
+
+![pgAdmin example](screenshots/pgadmin_yellow_taxi_example.png)
+
+If we right click, we can view the first 100 rows (this will open a sql tab with the query)
+
+![pgAdmin first 100 rows](screenshots/pgadmin_first_100_rows.png)
+
+We can also write our own queries by opening Tools > Query Tool
