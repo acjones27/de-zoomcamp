@@ -139,3 +139,45 @@ terraform destroy
 ```
 
 Now the .tfstate file is empty
+
+### Setting up a BQ dataset
+
+We can grab an example from [the docs](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/bigquery_dataset#example-usage---bigquery-dataset-basic)
+
+The only required field seems to be "dataset_id". Also the default location is US, which we might want to change for EU. We also set ["delete_contents_on_destroy"](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/bigquery_dataset#delete_contents_on_destroy) to true to delete the tables inside the dataset when we destroy
+
+```terraform
+resource "google_bigquery_dataset" "demo-dataset" {
+  dataset_id                 = "demo_dataset_terra"
+  location                   = "EU"
+  delete_contents_on_destroy = true
+}
+```
+
+## Terraform variables
+
+Let's create a `variables.tf` file
+
+I won't copy them all here but the approach is
+
+1. Create a variable
+
+```terraform
+variable "credentials_filename" {
+  description = "Credentials file"
+  type        = string
+  default     = "./keys/service_account.json"
+}
+```
+
+2. Use it with `var.my_variable_name`
+
+```terraform
+
+provider "google" {
+  # Configuration options
+  credentials = var.credentials_filename
+  project     = "some-project"
+  region      = "EU"
+}
+```
