@@ -162,18 +162,8 @@ cython_debug/
 # MacOS files
 .DS_Store
 
-# postgres db files
-# ignore data folder and subfolders but keep the ones with .gitkeep
-01-docker/data/*
-!01-docker/data/ny_taxi_postgres_db/
-01-docker/data/ny_taxi_postgres_db/*
-!01-docker/data/ny_taxi_postgres_db/.gitkeep
-**.csv*
-
 # secret keys
-**/service_account.json
+*.json
 
-# terraform
-**/.terraform
-*.tfstate
-*.tfstate.backup
+# data
+*.csv*
