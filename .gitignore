@@ -168,5 +168,12 @@ cython_debug/
 !01-docker/data/ny_taxi_postgres_db/
 01-docker/data/ny_taxi_postgres_db/*
 !01-docker/data/ny_taxi_postgres_db/.gitkeep
-
 **.csv*
+
+# secret keys
+**/service_account.json
+
+# terraform
+**/.terraform
+*.tfstate
+*.tfstate.backup
