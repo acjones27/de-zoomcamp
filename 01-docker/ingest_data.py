@@ -23,15 +23,21 @@ def main(params):
     engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{db}")
 
     df = pd.read_csv(csv_name, nrows=100)
-    df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
-    df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+
+    if "green" in csv_name:
+        pep_column = "lpep"
+    else:
+        pep_column = "tpep"
+
+    df[f"{pep_column}_pickup_datetime"] = pd.to_datetime(df[f"{pep_column}_pickup_datetime"])
+    df[f"{pep_column}_dropoff_datetime"] = pd.to_datetime(df[f"{pep_column}_dropoff_datetime"])
     df.head(n=0).to_sql(name=table_name, con=engine, if_exists="replace")
 
     df_iter = pd.read_csv(csv_name, iterator=True, chunksize=100_000)
     for i, chunk in enumerate(df_iter):
         print(f"Inserting chunk {i}")
-        chunk.tpep_pickup_datetime = pd.to_datetime(chunk.tpep_pickup_datetime)
-        chunk.tpep_dropoff_datetime = pd.to_datetime(chunk.tpep_dropoff_datetime)
+        chunk[f"{pep_column}_pickup_datetime"] = pd.to_datetime(chunk[f"{pep_column}_pickup_datetime"])
+        chunk[f"{pep_column}_dropoff_datetime"] = pd.to_datetime(chunk[f"{pep_column}_dropoff_datetime"])
         chunk.to_sql(name=table_name, con=engine, if_exists="append")
 
     df_zones = pd.read_csv("taxi+_zone_lookup.csv")
