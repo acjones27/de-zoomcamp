@@ -32,6 +32,7 @@ NOTE: Create a project if you haven't already
 In the real world, we would restrict the access as much as possible e.g. only create and destroy permissions
 
 If we find we need to give more access later, we can do it from the [IAM section](https://console.cloud.google.com/iam-admin/iam?organizationId=0&project=dtc-de-course-412716) and just click "Edit principal" next to our service account
+
 - Add Compute Engine > Admin
 
 - Click Service account > Click the ellipsis next to our service account and ["Manage Keys"](https://console.cloud.google.com/iam-admin/serviceaccounts/details/102389994510037182928/keys?organizationId=0&project=dtc-de-course-412716) > Add Key > Create New > JSON
