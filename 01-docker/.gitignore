@@ -1,0 +1,7 @@
+# postgres db files
+# ignore data folder and subfolders but keep the ones with .gitkeep
+data/*
+!data/ny_taxi_postgres_db/
+data/ny_taxi_postgres_db/*
+!data/ny_taxi_postgres_db/.gitkeep
+*.csv*

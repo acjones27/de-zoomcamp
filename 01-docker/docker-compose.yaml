@@ -1,0 +1,28 @@
+services:
+  pgdatabase:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=ny_taxi
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data:rw
+    ports:
+      - 5432:5432
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    volumes:
+      - pgadmin_volume:/var/lib/pgadmin
+    ports:
+      - 8080:80
+  ingestdata:
+    image: ingest_data:v0.0.1
+    command: --user=root --password=root --host=pgdatabase --port=5432 --db=ny_taxi --table_name=green_taxi_data --csv_url=${CSV_TAXI_URL} --csv_name=${CSV_TAXI_FILENAME}
+volumes:
+  pgadmin_volume:
+  postgres_volume:
+# https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz 
+# yellow_tripdata_2021-01.csv
