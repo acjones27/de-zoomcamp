@@ -1,7 +1,9 @@
-# de-zoomcamp
+# 👩‍🔧 Data Engineering Zoomcamp
 Repo for my work on the DataTalksClub Data Engineering Zoomcamp
 
-# Week 1 
+Link to course: https://github.com/DataTalksClub/data-engineering-zoomcamp
+
+# Notes 
 
 - [Docker Notes](./01-docker/README.md)
 - [Terraform Notes](./01-terraform/README.md)
