@@ -275,3 +275,8 @@ Now we visit our url that's listed in the terminal. NOTE: I tried to go to Cloud
 
 See [here](https://console.cloud.google.com/net-services/loadbalancing/details/http/mage-data-prep-urlmap-url-map?project=dtc-de-course-412716) for information about the load balancer URL, [this answer](https://www.googlecloudcommunity.com/gc/Serverless/Cloud-Run-How-to-allow-only-specific-IP-to-access-the-service/m-p/463272) that helped me to understand, and [here](https://console.cloud.google.com/net-security/securitypolicies/details/mage-data-prep-security-policy?project=dtc-de-course-412716&tab=rules) is where our IP is whitelisted I think
 
+## Extra stuff
+
+From the office hours, Matt also shared an example of a streaming project: https://github.com/mage-ai/magic-devcontainer
+
+He also shared the documentation for the mage directory is structured: https://docs.mage.ai/design/abstractions/project-structure
